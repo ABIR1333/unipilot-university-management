@@ -29,3 +29,7 @@ Frontend: Blade (Laravel templates)
 Database: MySQL
 Languages: PHP, JavaScript, HTML, CSS
 Tools: Composer, Node.js, npm
+👤 Roles
+Admin: full access
+Professor: manage courses & attendance
+Student: view information
