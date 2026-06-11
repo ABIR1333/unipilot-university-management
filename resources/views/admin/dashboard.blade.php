@@ -24,7 +24,7 @@
         </div>
         <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_etudiants']) }}</p>
         <p class="text-sm text-gray-600 mt-0.5">Étudiants inscrits</p>
-        <p class="text-xs text-gray-400 mt-0.5">Année 2024–2025</p>
+        <p class="text-xs text-gray-400 mt-0.5">Année 2025–2026</p>
     </div>
     <div class="card p-5">
         <div class="flex items-start justify-between mb-3">
@@ -120,7 +120,7 @@
     <div class="flex items-center justify-between mb-4">
         <div>
             <p class="font-semibold text-gray-900">Performance académique</p>
-            <p class="text-xs text-gray-400">Moyenne et présence — Sept. 2024 → Mars 2025</p>
+            <p class="text-xs text-gray-400">Moyenne et présence — Sept. 2025→ Mars 2026</p>
         </div>
 
         <a href="{{ route('admin.rapports.export-pdf') }}" class="btn-secondary btn-sm">

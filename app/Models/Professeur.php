@@ -5,7 +5,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Professeur extends Model {
     use SoftDeletes;
-    protected $fillable = ['user_id','employee_id','specialite','bio','bureau','telephone','statut','date_embauche'];
+protected $fillable = [
+    'user_id',
+    'employee_id',
+    'specialite',
+    'bio',
+    'bureau',
+    'telephone',
+    'statut',
+    'date_embauche',
+    'nom',
+    'email'
+];
     protected $casts = ['date_embauche'=>'date'];
     public function user() { return $this->belongsTo(User::class); }
     public function modules() { return $this->belongsToMany(Module::class,'module_professeur'); }

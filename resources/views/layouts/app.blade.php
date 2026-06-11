@@ -262,10 +262,6 @@ border-bottom:none;
                class="sidebar-link {{ request()->routeIs('admin.rapports*') ? 'active' : '' }}">
                 <i class="fa-solid fa-chart-bar w-4 text-center"></i> Rapports & Analytics
             </a>
-            <a href="{{ route('admin.espace-cours.index') }}"
-               class="sidebar-link {{ request()->routeIs('admin.espace-cours*') ? 'active' : '' }}">
-                <i class="fa-solid fa-desktop w-4 text-center"></i> Espace cours
-            </a>
             <a href="{{ route('admin.parametres.index') }}"
                class="sidebar-link {{ request()->routeIs('admin.parametres*') ? 'active' : '' }}">
                 <i class="fa-solid fa-gear w-4 text-center"></i> Paramètres
@@ -296,7 +292,6 @@ border-bottom:none;
     <div class="fixed inset-0 bg-black/40 z-30 lg:hidden" x-show="mobileOpen" x-cloak @click="mobileOpen=false"></div>
 
     {{-- MAIN --}}
-{{-- MAIN --}}
 <div class="flex-1 flex flex-col min-h-screen lg:pl-64">
 
     {{-- Top bar --}}

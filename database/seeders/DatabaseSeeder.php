@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder {
             EmploiDuTempsSeeder::class,
             NotesPresencesSeeder::class,
             DemandesSeeder::class,
+            EspaceCoursSeeder::class,
         ]);
     }
 }

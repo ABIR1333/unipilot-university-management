@@ -1,95 +1,225 @@
 <?php
+
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\Professeur\DashboardController as ProfDashboardController;
+use App\Http\Controllers\Professeur\NoteController;
+use App\Http\Controllers\Professeur\PresenceController;
+use App\Http\Controllers\Professeur\JournalController;
+use App\Http\Controllers\Professeur\EspaceCoursController;
+use App\Http\Controllers\Professeur\ReservationController;
+use App\Http\Controllers\Professeur\EmploiDuTempsController;
+use App\Http\Controllers\Professeur\ProfesseurDemandeController;
+use App\Http\Controllers\Professeur\ProfilController;
+use App\Http\Controllers\Etudiant\DashboardController as EtudiantDashboardController;
+use App\Http\Controllers\Etudiant\NoteController as EtudiantNoteController;
+use App\Http\Controllers\Etudiant\EmploiDuTempsController as EtudiantEmploiDuTempsController;
+use App\Http\Controllers\Etudiant\PresenceController as EtudiantPresenceController;
+use App\Http\Controllers\Etudiant\EspaceCoursController as EtudiantEspaceCoursController;
+use App\Http\Controllers\Etudiant\DemandeController as EtudiantDemandeController;
+use App\Http\Controllers\Etudiant\ProfilController as EtudiantProfilController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
-// Auth
+// Routes d'authentification (invités seulement)
 Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class,'showLoginForm'])->name('login');
-    Route::post('/login', [LoginController::class,'login']);
+    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [LoginController::class, 'login']);
     Route::get('/forgot-password', fn() => view('auth.forgot-password'))->name('password.request');
 });
-Route::post('/logout', [LoginController::class,'logout'])->name('logout')->middleware('auth');
-Route::get('/', fn() => redirect()->route('login'));
 
-// Admin (accessible admin + professeur + etudiant — role check inside views)
-Route::prefix('admin')->name('admin.')->middleware(['auth','active'])->group(function () {
+// Routes protégées par authentification
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
-    Route::get('/dashboard', [Admin\DashboardController::class,'index'])->name('dashboard');
+// Redirection racine
+Route::get('/', function () {
+    if (Auth::check()) {
+        $user = Auth::user();
+        if ($user->professeur) return redirect()->route('admin.professeur.dashboard');
+        if ($user->etudiant) return redirect()->route('etudiant.dashboard');
+        return redirect()->route('admin.dashboard');
+    }
+    return redirect()->route('login');
+});
 
-    // Étudiants
-    Route::get('etudiants', [Admin\EtudiantController::class,'index'])->name('etudiants.index');
-    Route::get('etudiants/create', [Admin\EtudiantController::class,'create'])->name('etudiants.create');
-    Route::post('etudiants', [Admin\EtudiantController::class,'store'])->name('etudiants.store');
-    Route::get('etudiants/{etudiant}', [Admin\EtudiantController::class,'show'])->name('etudiants.show');
-    Route::get('etudiants/{etudiant}/edit', [Admin\EtudiantController::class,'edit'])->name('etudiants.edit');
-    Route::patch('etudiants/{etudiant}', [Admin\EtudiantController::class,'update'])->name('etudiants.update');
-    Route::delete('etudiants/{etudiant}', [Admin\EtudiantController::class,'destroy'])->name('etudiants.destroy');
-    Route::get('etudiants/{etudiant}/releve', [Admin\EtudiantController::class,'releve'])->name('etudiants.releve');
-    Route::get('etudiants/{etudiant}/attestation', [Admin\EtudiantController::class,'attestation'])->name('etudiants.attestation');
+// Routes Admin
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'active'])->group(function () {
+    
+    // Dashboard Admin
+    Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
+    
+    // ==================== ESPACE PROFESSEUR ====================
+    Route::prefix('professeur')->name('professeur.')->group(function () {
+        
+        // Tableau de bord professeur
+        Route::get('/dashboard', [ProfDashboardController::class, 'index'])->name('dashboard');
+        
+        // Notes
+        Route::get('/notes', [NoteController::class, 'index'])->name('notes.index');
+        Route::post('/notes/save', [NoteController::class, 'save'])->name('notes.save');
+        Route::get('/notes/export-pdf', [NoteController::class, 'exportPdf'])->name('notes.export-pdf');
+        
+        // Présences
+        Route::get('/presences', [PresenceController::class, 'index'])->name('presences.index');
+        Route::post('/presences', [PresenceController::class, 'store'])->name('presences.store');
+        
+        // Journal pédagogique
+        Route::get('/journal', [JournalController::class, 'index'])->name('journal.index');
+        Route::post('/journal', [JournalController::class, 'store'])->name('journal.store');
+        Route::get('/journal/create', [JournalController::class, 'create'])->name('journal.create');
+        Route::get('/journal/{id}/edit', [JournalController::class, 'edit'])->name('journal.edit');
+        Route::put('/journal/{id}', [JournalController::class, 'update'])->name('journal.update');
+        Route::delete('/journal/{id}', [JournalController::class, 'destroy'])->name('journal.destroy');
+        
+        // Espace cours
+        Route::get('/espace-cours', [EspaceCoursController::class, 'index'])->name('espace-cours.index');
+        Route::post('/espace-cours/annonce', [EspaceCoursController::class, 'storeAnnonce'])->name('espace-cours.annonce.store');
+        Route::delete('/espace-cours/annonce/{annonce}', [EspaceCoursController::class, 'destroyAnnonce'])->name('espace-cours.annonce.destroy');
+        Route::post('/espace-cours/document', [EspaceCoursController::class, 'storeDocument'])->name('espace-cours.document.store');
+        Route::delete('/espace-cours/document/{document}', [EspaceCoursController::class, 'destroyDocument'])->name('espace-cours.document.destroy');
+        Route::post('/espace-cours/commentaire', [EspaceCoursController::class, 'storeCommentaire'])->name('espace-cours.commentaire.store');
+        
+        // Réservation de salle
+        Route::get('/reservations', [ReservationController::class, 'index'])->name('reservations.index');
+        Route::post('/reservations', [ReservationController::class, 'store'])->name('reservations.store');
+        Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy'])->name('reservations.destroy');
+        
+        // Emploi du temps
+        Route::get('/emploi-du-temps', [EmploiDuTempsController::class, 'index'])->name('emploi-du-temps.index');
+        
+        // Demandes administratives
+        Route::get('/demandes', [ProfesseurDemandeController::class, 'index'])->name('demandes.index');
+        Route::post('/demandes', [ProfesseurDemandeController::class, 'store'])->name('demandes.store');
+        Route::get('/demandes/{demande}/telecharger', [ProfesseurDemandeController::class, 'telecharger'])->name('demandes.telecharger');
+        
+        // Profil
+        Route::get('/profil', [ProfilController::class, 'index'])->name('profil.index');
+        Route::post('/profil', [ProfilController::class, 'update'])->name('profil.update');
+    });
 
-    // Professeurs
-    Route::get('professeurs', [Admin\ProfesseurController::class,'index'])->name('professeurs.index');
-    Route::get('professeurs/create', [Admin\ProfesseurController::class,'create'])->name('professeurs.create');
-    Route::post('professeurs', [Admin\ProfesseurController::class,'store'])->name('professeurs.store');
-    Route::get('professeurs/{professeur}', [Admin\ProfesseurController::class,'show'])->name('professeurs.show');
-    Route::get('professeurs/{professeur}/edit', [Admin\ProfesseurController::class,'edit'])->name('professeurs.edit');
-    Route::patch('professeurs/{professeur}', [Admin\ProfesseurController::class,'update'])->name('professeurs.update');
-    Route::delete('professeurs/{professeur}', [Admin\ProfesseurController::class,'destroy'])->name('professeurs.destroy');
+    // ==================== GESTION DES ÉTUDIANTS ====================
+    Route::prefix('etudiants')->name('etudiants.')->group(function () {
+        Route::get('/', [Admin\EtudiantController::class, 'index'])->name('index');
+        Route::get('/create', [Admin\EtudiantController::class, 'create'])->name('create');
+        Route::post('/', [Admin\EtudiantController::class, 'store'])->name('store');
+        Route::get('/{etudiant}', [Admin\EtudiantController::class, 'show'])->name('show');
+        Route::get('/{etudiant}/edit', [Admin\EtudiantController::class, 'edit'])->name('edit');
+        Route::patch('/{etudiant}', [Admin\EtudiantController::class, 'update'])->name('update');
+        Route::delete('/{etudiant}', [Admin\EtudiantController::class, 'destroy'])->name('destroy');
+        Route::get('/{etudiant}/releve', [Admin\EtudiantController::class, 'releve'])->name('releve');
+        Route::get('/{etudiant}/attestation', [Admin\EtudiantController::class, 'attestation'])->name('attestation');
+    });
 
-    // Programmes & Modules
-    Route::get('programmes', [Admin\ProgrammeController::class,'index'])->name('programmes.index');
-    Route::post('programmes', [Admin\ProgrammeController::class,'store'])->name('programmes.store');
-    Route::get('programmes/{programme}/modules', [Admin\ProgrammeController::class,'modules'])->name('programmes.modules');
-    Route::delete('programmes/{programme}', [Admin\ProgrammeController::class,'destroy'])->name('programmes.destroy');
-    Route::post('modules', [Admin\ProgrammeController::class,'storeModule'])->name('modules.store');
-    Route::patch('modules/{module}', [Admin\ProgrammeController::class,'updateModule'])->name('modules.update');
-    Route::delete('modules/{module}', [Admin\ProgrammeController::class,'destroyModule'])->name('modules.destroy');
+    // ==================== GESTION DES PROFESSEURS ====================
+    Route::prefix('professeurs')->name('professeurs.')->group(function () {
+        Route::get('/', [Admin\ProfesseurController::class, 'index'])->name('index');
+        Route::get('/create', [Admin\ProfesseurController::class, 'create'])->name('create');
+        Route::post('/', [Admin\ProfesseurController::class, 'store'])->name('store');
+        Route::get('/{professeur}', [Admin\ProfesseurController::class, 'show'])->name('show');
+        Route::get('/{professeur}/edit', [Admin\ProfesseurController::class, 'edit'])->name('edit');
+        Route::patch('/{professeur}', [Admin\ProfesseurController::class, 'update'])->name('update');
+        Route::delete('/{professeur}', [Admin\ProfesseurController::class, 'destroy'])->name('destroy');
+    });
 
-    // Emploi du temps
-    Route::get('emploi-du-temps', [Admin\EmploiDuTempsController::class,'index'])->name('emploi-du-temps.index');
-    Route::post('emploi-du-temps', [Admin\EmploiDuTempsController::class,'store'])->name('emploi-du-temps.store');
-    Route::delete('emploi-du-temps/{emploiDuTemps}', [Admin\EmploiDuTempsController::class,'destroy'])->name('emploi-du-temps.destroy');
-    Route::get('emploi-du-temps/export-pdf', [Admin\EmploiDuTempsController::class,'exportPdf'])->name('emploi-du-temps.export-pdf');
+    // ==================== PROGRAMMES & MODULES ====================
+    Route::prefix('programmes')->name('programmes.')->group(function () {
+        Route::get('/', [Admin\ProgrammeController::class, 'index'])->name('index');
+        Route::post('/', [Admin\ProgrammeController::class, 'store'])->name('store');
+        Route::get('/{programme}/modules', [Admin\ProgrammeController::class, 'modules'])->name('modules');
+        Route::delete('/{programme}', [Admin\ProgrammeController::class, 'destroy'])->name('destroy');
+    });
+    
+    Route::prefix('modules')->name('modules.')->group(function () {
+        Route::post('/', [Admin\ProgrammeController::class, 'storeModule'])->name('store');
+        Route::patch('/{module}', [Admin\ProgrammeController::class, 'updateModule'])->name('update');
+        Route::delete('/{module}', [Admin\ProgrammeController::class, 'destroyModule'])->name('destroy');
+    });
 
-    // Notes
-    Route::get('notes', [Admin\NoteController::class,'index'])->name('notes.index');
-    Route::post('notes', [Admin\NoteController::class,'store'])->name('notes.store');
-    Route::patch('notes/{note}', [Admin\NoteController::class,'update'])->name('notes.update');
-    Route::post('notes/bulk', [Admin\NoteController::class,'bulkUpdate'])->name('notes.bulk');
-    Route::get('notes/export-pdf', [Admin\NoteController::class,'exportPdf'])->name('notes.export-pdf');
+    // ==================== EMPLOI DU TEMPS ====================
+    Route::prefix('emploi-du-temps')->name('emploi-du-temps.')->group(function () {
+        Route::get('/', [Admin\EmploiDuTempsController::class, 'index'])->name('index');
+        Route::post('/', [Admin\EmploiDuTempsController::class, 'store'])->name('store');
+        Route::delete('/{emploiDuTemps}', [Admin\EmploiDuTempsController::class, 'destroy'])->name('destroy');
+        Route::get('/export-pdf', [Admin\EmploiDuTempsController::class, 'exportPdf'])->name('export-pdf');
+    });
 
-    // Présences
-    Route::get('presences', [Admin\PresenceController::class,'index'])->name('presences.index');
-    Route::post('presences', [Admin\PresenceController::class,'store'])->name('presences.store');
-    Route::get('presences/export-pdf', [Admin\PresenceController::class,'exportPdf'])->name('presences.export-pdf');
+    // ==================== NOTES ====================
+    Route::prefix('notes')->name('notes.')->group(function () {
+        Route::get('/', [Admin\NoteController::class, 'index'])->name('index');
+        Route::post('/', [Admin\NoteController::class, 'store'])->name('store');
+        Route::patch('/{note}', [Admin\NoteController::class, 'update'])->name('update');
+        Route::post('/bulk', [Admin\NoteController::class, 'bulkUpdate'])->name('bulk');
+        Route::get('/export-pdf', [Admin\NoteController::class, 'exportPdf'])->name('export-pdf');
+    });
 
-    // Salles
-    Route::get('salles', [Admin\SalleController::class,'index'])->name('salles.index');
-    Route::post('salles', [Admin\SalleController::class,'store'])->name('salles.store');
-    Route::patch('salles/{salle}', [Admin\SalleController::class,'update'])->name('salles.update');
-    Route::delete('salles/{salle}', [Admin\SalleController::class,'destroy'])->name('salles.destroy');
-    Route::post('salles/reservations', [Admin\SalleController::class,'storeReservation'])->name('salles.reservations.store');
-    Route::delete('salles/reservations/{reservation}', [Admin\SalleController::class,'destroyReservation'])->name('salles.reservations.destroy');
+    // ==================== PRÉSENCES ====================
+    Route::prefix('presences')->name('presences.')->group(function () {
+        Route::get('/', [Admin\PresenceController::class, 'index'])->name('index');
+        Route::post('/', [Admin\PresenceController::class, 'store'])->name('store');
+        Route::get('/export-pdf', [Admin\PresenceController::class, 'exportPdf'])->name('export-pdf');
+    });
 
-    // Demandes
-    Route::get('demandes', [Admin\DemandeController::class,'index'])->name('demandes.index');
-    Route::post('demandes/{demande}/approuver', [Admin\DemandeController::class,'approuver'])->name('demandes.approuver');
-    Route::post('demandes/{demande}/rejeter', [Admin\DemandeController::class,'rejeter'])->name('demandes.rejeter');
-    Route::get('demandes/{demande}/telecharger', [Admin\DemandeController::class,'telecharger'])->name('demandes.telecharger');
+    // ==================== SALLES ====================
+    Route::prefix('salles')->name('salles.')->group(function () {
+        Route::get('/', [Admin\SalleController::class, 'index'])->name('index');
+        Route::post('/', [Admin\SalleController::class, 'store'])->name('store');
+        Route::patch('/{salle}', [Admin\SalleController::class, 'update'])->name('update');
+        Route::delete('/{salle}', [Admin\SalleController::class, 'destroy'])->name('destroy');
+        
+        Route::prefix('{salle}/reservations')->name('reservations.')->group(function () {
+            Route::post('/', [Admin\SalleController::class, 'storeReservation'])->name('store');
+            Route::delete('/{reservation}', [Admin\SalleController::class, 'destroyReservation'])->name('destroy');
+        });
+    });
 
-    // Rapports
-    Route::get('rapports', [Admin\RapportController::class,'index'])->name('rapports.index');
-    Route::get('rapports/export-pdf', [Admin\RapportController::class,'exportPdf'])->name('rapports.export-pdf');
+    // ==================== DEMANDES ====================
+    Route::prefix('demandes')->name('demandes.')->group(function () {
+        Route::get('/', [Admin\DemandeController::class, 'index'])->name('index');
+        Route::post('/{demande}/approuver', [Admin\DemandeController::class, 'approuver'])->name('approuver');
+        Route::post('/{demande}/rejeter', [Admin\DemandeController::class, 'rejeter'])->name('rejeter');
+        Route::get('/{demande}/telecharger', [Admin\DemandeController::class, 'telecharger'])->name('telecharger');
+    });
 
-    // Espace cours
-    Route::get('espace-cours', [Admin\EspaceCoursController::class,'index'])->name('espace-cours.index');
-    Route::post('espace-cours/annonces', [Admin\EspaceCoursController::class,'storeAnnonce'])->name('espace-cours.annonces.store');
-    Route::delete('espace-cours/annonces/{annonce}', [Admin\EspaceCoursController::class,'destroyAnnonce'])->name('espace-cours.annonces.destroy');
-    Route::post('espace-cours/documents', [Admin\EspaceCoursController::class,'storeDocument'])->name('espace-cours.documents.store');
-    Route::delete('espace-cours/documents/{document}', [Admin\EspaceCoursController::class,'destroyDocument'])->name('espace-cours.documents.destroy');
-    Route::post('espace-cours/commentaires', [Admin\EspaceCoursController::class,'storeCommentaire'])->name('espace-cours.commentaires.store');
+    // ==================== RAPPORTS ====================
+    Route::prefix('rapports')->name('rapports.')->group(function () {
+        Route::get('/', [Admin\RapportController::class, 'index'])->name('index');
+        Route::get('/export-pdf', [Admin\RapportController::class, 'exportPdf'])->name('export-pdf');
+    });
 
-    // Paramètres
-    Route::get('parametres', [Admin\ParametreController::class,'index'])->name('parametres.index');
+    // ==================== PARAMÈTRES ====================
+    Route::prefix('parametres')->name('parametres.')->group(function () {
+        Route::get('/', [Admin\ParametreController::class, 'index'])->name('index');
+        Route::post('/config', [Admin\ParametreController::class, 'updateConfig'])->name('config.update');
+        Route::get('/role/{role}/permissions', [Admin\ParametreController::class, 'getRolePermissions'])->name('role.permissions.list');
+        Route::post('/role/{role}/permissions', [Admin\ParametreController::class, 'updateRolePermissions'])->name('role.permissions');
+        Route::post('/user/{user}/role', [Admin\ParametreController::class, 'assignRole'])->name('user.role');
+    });
+});
+
+// ==================== ESPACE ÉTUDIANT ====================
+Route::prefix('etudiant')->name('etudiant.')->middleware(['auth', 'active'])->group(function () {
+    Route::get('/dashboard', [EtudiantDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/notes', [EtudiantNoteController::class, 'index'])->name('notes.index');
+    Route::get('/emploi-du-temps', [EtudiantEmploiDuTempsController::class, 'index'])->name('emploi-du-temps.index');
+    Route::get('/presences', [EtudiantPresenceController::class, 'index'])->name('presences.index');
+    Route::get('/espace-cours', [EtudiantEspaceCoursController::class, 'index'])->name('espace-cours.index');
+    Route::get('/demandes', [EtudiantDemandeController::class, 'index'])->name('demandes.index');
+    Route::post('/demandes', [EtudiantDemandeController::class, 'store'])->name('demandes.store');
+    Route::get('/profil', [EtudiantProfilController::class, 'index'])->name('profil.index');
+    Route::patch('/profil', [EtudiantProfilController::class, 'update'])->name('profil.update');
+});
+// ==================== ESPACE ÉTUDIANT ====================
+Route::prefix('etudiant')->name('etudiant.')->middleware(['auth', 'active'])->group(function () {
+    Route::get('/dashboard', [EtudiantDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/notes', [EtudiantNoteController::class, 'index'])->name('notes.index');
+    Route::get('/emploi-du-temps', [EtudiantEmploiDuTempsController::class, 'index'])->name('emploi-du-temps.index');
+    Route::get('/presences', [EtudiantPresenceController::class, 'index'])->name('presences.index');
+    Route::get('/espace-cours', [EtudiantEspaceCoursController::class, 'index'])->name('espace-cours.index');
+    Route::get('/espace-cours/download/{document}', [EtudiantEspaceCoursController::class, 'download'])->name('espace-cours.download');
+    Route::post('/espace-cours/commentaire', [EtudiantEspaceCoursController::class, 'storeCommentaire'])->name('espace-cours.commentaire.store');
+    Route::get('/demandes', [EtudiantDemandeController::class, 'index'])->name('demandes.index');
+    Route::post('/demandes', [EtudiantDemandeController::class, 'store'])->name('demandes.store');
+    Route::get('/profil', [EtudiantProfilController::class, 'index'])->name('profil.index');
+    Route::patch('/profil', [EtudiantProfilController::class, 'update'])->name('profil.update');
+    Route::get('/demandes/{demande}/telecharger', [EtudiantDemandeController::class, 'telecharger'])->name('demandes.telecharger');
 });

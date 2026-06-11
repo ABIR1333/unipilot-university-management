@@ -38,7 +38,8 @@
             <div class="mt-3 px-3 py-2 bg-gray-50 rounded-lg">
                 <p class="text-sm text-gray-700">{{ $cfg['desc'] }}</p>
             </div>
-            <button class="mt-4 text-sm text-indigo-600 hover:underline flex items-center gap-1">
+            <button onclick="openPermissionModal({{ $role->id }}, '{{ $role->name }}')" 
+                    class="mt-4 text-sm text-indigo-600 hover:underline flex items-center gap-1">
                 <i class="fa-solid fa-pen text-xs"></i> Modifier les droits
             </button>
         </div>
@@ -57,24 +58,32 @@
         </div>
     </div>
 
-    {{-- Configuration tab --}}
-    <div x-show="tab==='config'" x-cloak class="card p-6 max-w-lg">
-        <h3 class="font-semibold text-gray-900 mb-4">Configuration générale</h3>
+   {{-- Configuration tab --}}
+<div x-show="tab==='config'" x-cloak class="card p-6 max-w-lg">
+    <h3 class="font-semibold text-gray-900 mb-4">Configuration générale</h3>
+    <form method="POST" action="{{ route('admin.parametres.config.update') }}">
+        @csrf
         <div class="space-y-4">
-            <div><label class="form-label">Nom de l'université</label>
-                <input type="text" value="{{ $config['nom_universite'] }}" class="form-input"></div>
-            <div><label class="form-label">Année académique en cours</label>
-                <input type="text" value="{{ $config['annee_academique'] }}" class="form-input"></div>
-            <div><label class="form-label">Semestre actuel</label>
-                <select class="form-input">
+            <div>
+                <label class="form-label">Nom de l'université</label>
+                <input type="text" name="nom_universite" value="{{ $config['nom_universite'] }}" class="form-input">
+            </div>
+            <div>
+                <label class="form-label">Année académique en cours</label>
+                <input type="text" name="annee_academique" value="{{ $config['annee_academique'] }}" class="form-input">
+            </div>
+            <div>
+                <label class="form-label">Semestre actuel</label>
+                <select name="semestre_actuel" class="form-input">
                     @for($i=1;$i<=10;$i++)
                     <option {{ $config['semestre_actuel']==$i?'selected':'' }}>{{ $i }}</option>
                     @endfor
                 </select>
             </div>
-            <button class="btn-primary">Enregistrer</button>
+            <button type="submit" class="btn-primary">Enregistrer</button>
         </div>
-    </div>
+    </form>
+</div>
 
     {{-- Notifications tab --}}
     <div x-show="tab==='notifs'" x-cloak class="card p-6 max-w-lg">
@@ -93,4 +102,51 @@
         </div>
     </div>
 </div>
+
+{{-- Modal Permissions --}}
+<div id="permissionModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+        <div class="px-5 py-3 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="font-bold text-gray-900">Modifier les droits</h3>
+            <button onclick="closePermissionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <form id="permissionForm" method="POST" class="p-5">
+            @csrf
+            <div id="permissionsList" class="space-y-2 max-h-96 overflow-y-auto">
+                <!-- Permissions will be loaded here -->
+            </div>
+            <div class="flex gap-2 justify-end mt-4 pt-3 border-t border-gray-100">
+                <button type="button" onclick="closePermissionModal()" class="px-4 py-2 border rounded-lg text-gray-700">Annuler</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openPermissionModal(roleId, roleName) {
+    document.getElementById('permissionModal').classList.remove('hidden');
+    document.getElementById('permissionForm').action = "/admin/parametres/role/" + roleId + "/permissions";
+    
+    fetch("/admin/parametres/role/" + roleId + "/permissions")
+        .then(response => response.json())
+        .then(permissions => {
+            let html = '<div class="space-y-2">';
+            permissions.forEach(perm => {
+                html += `<label class="flex items-center gap-2 py-1 cursor-pointer">
+                            <input type="checkbox" name="permissions[]" value="${perm.name}" ${perm.assigned ? 'checked' : ''} class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm text-gray-700">${perm.name.replace(/_/g, ' ')}</span>
+                         </label>`;
+            });
+            html += '</div>';
+            document.getElementById('permissionsList').innerHTML = html;
+        });
+}
+
+function closePermissionModal() {
+    document.getElementById('permissionModal').classList.add('hidden');
+}
+</script>
 @endsection

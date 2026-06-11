@@ -66,7 +66,7 @@
                         </div>
                         <div>
                             <p class="font-semibold text-gray-900 text-sm">{{ $etudiant->nom }}</p>
-                            <p class="text-xs text-gray-500">{{ $etudiant->email }}</p>
+                            <p class="text-xs text-gray-500">{{ $etudiant->user->email ?? '' }}</p>
                         </div>
                     </div>
                 </td>

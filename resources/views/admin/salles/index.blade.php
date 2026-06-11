@@ -125,7 +125,7 @@
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
         </div>
-        <form method="POST" action="{{ route('admin.salles.reservations.store') }}">
+        <form method="POST" action="{{ route('admin.salles.reservations.store', ['salle' => $salle->id ?? 1]) }}">
             @csrf
             <div class="space-y-4">
                 <div><label class="form-label">Salle *</label>
